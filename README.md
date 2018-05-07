@@ -1,6 +1,10 @@
 # Kolorowanie Brooksa
 
-###Changelog:
+### Changelog:
+#### 0.2
+* Dodana możliwość zapisu kolorowania do pliku .csv
+* Dodane argumenty do wywoływania programu z konsoli
+
 #### 0.1
 Pierwsza wersja
 * Na razie tylko klasa Graph, udostępniająca funkcje potrzebne do algorytmu

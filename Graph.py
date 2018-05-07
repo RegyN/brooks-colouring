@@ -286,6 +286,7 @@ class Graph(object):
     # TODO: Numerowanie wierzchołków znając już u, v, w     [DONE]
     # TODO: Kolorowanie wierzchołków mając już numerowanie  [DONE]
 
+    # TODO: Wyświetlanie kolorowania grafów w graphviz
     # TODO: Łączenie kolorowań podgrafów dwuspójnych
     # TODO: Kolorowanie cyklu                               [DONE]
     # TODO: Kolorowanie grafu pełnego                       [DONE]
