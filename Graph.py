@@ -1,6 +1,8 @@
 # coding=utf-8
+from __future__ import print_function
 import csv
 from collections import deque
+import sys
 
 
 class Graph(object):
@@ -24,12 +26,12 @@ class Graph(object):
                     self.VerticesCount = int(row[0])
                     e_count = int(row[1])
                 elif i > e_count:
-                    raise Exception("Zbyt duża liczba krawędzi w pliku")
+                    raise Exception("Zbyt duza liczba krawedzi w pliku")
                 else:
                     edge_from = int(row[0])
                     edge_to = int(row[1])
                     if edge_from >= self.VerticesCount or edge_to >= self.VerticesCount:
-                        raise Exception('Nieprawidłowe indeksy wierzchołków w pliku')
+                        raise Exception('Nieprawidlowe indeksy wierzcholkow w pliku')
                     self.add_edge(edge_from, edge_to)
 
     # Dodawanie krawędzi. Sprawdza, czy wierzchołki istnieją i zwraca błąd, jeśli nie. Aktualizuje EdgesCount.
@@ -48,7 +50,7 @@ class Graph(object):
 
     def add_edge_unsafe(self, source, dest):
         if not self.UnsafeWarned:
-            print "You are using an unsafe version of add_edge method. Some methods may be unusable on resulting graph."
+            print("You are using an unsafe version of add_edge method. Some methods may be unusable on resulting graph.")
             self.UnsafeWarned = True
         if max(source, dest) > self.VerticesCount - 1:
             self.VerticesCount = max(source, dest) - 1

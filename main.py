@@ -5,8 +5,8 @@ import argparse
 
 
 def save_colouring_as_csv(path, colouring):
-    with open(path, 'wb') as outfile:
-        outwriter = csv.writer(outfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
+    with open(path, 'wt') as outfile:
+        outwriter = csv.writer(outfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_NONNUMERIC, lineterminator='\n')
         outwriter.writerow([max(colouring)])
         for i, colour in enumerate(colouring):
             outwriter.writerow([i, colour])
