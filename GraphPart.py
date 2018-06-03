@@ -85,7 +85,7 @@ class GraphPart(object):
 
     def is_fully_connected(self):
         n = self.VerticesCount
-        for v in self.Edges.keys():
+        for v in self.Edges:
             if len(self.Edges[v]) != n-1:
                 return False
         return True
@@ -193,21 +193,6 @@ class GraphPart(object):
                     st.append((u, v))
         return True
 
-    def is_biconnected(self, without=None):
-        self.Time = 0
-        disc = dict()
-        low = dict()
-        parent = dict()
-        st = []
-
-        for i in self.Edges.keys():
-            if without is not None and i in without:
-                continue
-            if i not in disc:
-                if not self._is_biconnected_util(i, parent, low, disc, st, without):
-                    return False
-        return True
-
     def find_uvw(self):
         # 1: Wybrać wierzchołek x o stopniu 3 <= deg(x) <= n-1
         u = -1
@@ -249,7 +234,7 @@ class GraphPart(object):
         return u, v, w
 
     def label_from_uvw(self, u, v, w):
-        if min(u, v, w) < 0 or max(u, v, w) > self.VerticesCount or u == v or v == w or w == u:
+        if min(u, v, w) < 0 or u == v or v == w or w == u:
             raise ValueError("{0}, {1}, {2} nie są prawidłowymi indeksami dla u, v, w".format(u, v, w))
         # TODO: zmienić result na list() (?)
         result = dict()
@@ -294,7 +279,5 @@ class GraphPart(object):
             return self.colour_as_cycle()
         if self.is_fully_connected():
             return self.colour_as_fully_connected()
-        if self.is_biconnected():
-            u, v, w = self.find_uvw()
-            return self.colouring_from_labels(self.label_from_uvw(u, v, w))
-        raise Exception("Na chwilę obecną obsługiwane są tylko grafy dwuspójne")
+        u, v, w = self.find_uvw()
+        return self.colouring_from_labels(self.label_from_uvw(u, v, w))

@@ -1,25 +1,39 @@
 # coding=utf-8
 from __future__ import print_function
 import csv
-from collections import deque
-import sys
+from GraphPart import GraphPart
+
+
+def swap_colors(colouring, col1, col2):
+    for i in colouring.keys():
+        if colouring[i] == col1:
+            colouring[i] = col2
+        elif colouring[i] == col2:
+            colouring[i] = col1
+    return colouring
+
+
+def apply_colouring(colouring, change):
+    for i in change.keys():
+        colouring[i] = change[i]
+    return colouring
 
 
 class Graph(object):
 
-    def __init__(self, path=None, directed=False):
+    def __init__(self, path=None):
         self.Edges = dict()
         self.VerticesCount = 0
         self.EdgesCount = 0
-        self.Directed = directed
+        self.Components = list()
+        self.ArtPoints = list()
         if path is not None:
             self.load_data(path)
         self.Time = 0
-        self.UnsafeWarned = False
 
     def load_data(self, path):
         with open(path, 'r') as f:
-            reader = csv.reader(f)
+            reader = csv.reader(f, delimiter=' ')
             e_count = 0
             for i, row in enumerate(reader):
                 if i == 0:
@@ -47,26 +61,7 @@ class Graph(object):
                 self.Edges[source].append(dest)
         else:
             self.Edges[source] = [dest]
-        if (not self.Directed) and dest in self.Edges:
-            self.Edges[dest].append(source)
-        else:
-            self.Edges[dest] = [source]
-        self.EdgesCount = self.EdgesCount + 1
-
-    # TODO: usunąć odwołania do tej funkcji oraz samą funkcję
-    def add_edge_unsafe(self, source, dest):
-        if not self.UnsafeWarned:
-            print("You are using an unsafe version of add_edge method. Some methods may be unusable on resulting graph.")
-            self.UnsafeWarned = True
-        if source == dest:
-            return
-        if max(source, dest) > self.VerticesCount - 1:
-            self.VerticesCount = max(source, dest) - 1
-        if source in self.Edges:
-            self.Edges[source].append(dest)
-        else:
-            self.Edges[source] = [dest]
-        if (not self.Directed) and dest in self.Edges:
+        if dest in self.Edges:
             self.Edges[dest].append(source)
         else:
             self.Edges[dest] = [source]
@@ -78,35 +73,6 @@ class Graph(object):
             if len(self.Edges[v]) > max_rank:
                 max_rank = len(self.Edges[v])
         return max_rank
-
-    def is_fully_connected(self):
-        n = self.VerticesCount
-        for v in range(n):
-            if (v not in self.Edges) or len(self.Edges[v]) != n - 1:
-                return False
-        return True
-
-    def is_cycle(self):
-        visited_so_far = 0
-        start = 0
-        current = 0
-        prev = -1
-
-        while True:
-            if current not in self.Edges:
-                return False
-            if len(self.Edges[current]) != 2:
-                return False
-            for next in self.Edges[current]:
-                if next != prev:
-                    prev = current
-                    current = next
-                    visited_so_far += 1
-                    break
-            if current == start:
-                break
-
-        return visited_so_far == self.VerticesCount
 
     def _biconnected_util(self, u, parent, low, disc, st, without=None):
         components = list()
@@ -130,9 +96,8 @@ class Graph(object):
                     parent[v] = u
                     children += 1
                     st.append((u, v))  # store the edge in stack
-                    comp_inc, art_inc = self._biconnected_util(v, parent, low, disc, st, without)
-                    components = components + comp_inc
-                    art_points = art_points + art_inc
+                    self._biconnected_util(v, parent, low, disc, st, without)
+
 
                     # Check if the subtree rooted with v has a connection to
                     # one of the ancestors of u
@@ -141,28 +106,34 @@ class Graph(object):
                     # If u is an articulation point,pop
                     # all edges from stack till (u, v)
                     if parent[u] == -1 and children > 1 or parent[u] != -1 and low[v] >= disc[u]:
-                        art_points.append(u)
-                        component = Graph(directed=self.Directed)
+                        component = GraphPart()
+                        verts = set()
                         w = -1
                         while w != (u, v):
                             w = st.pop()
-                            component.add_edge_unsafe(w[0], w[1])
-                        components.append(component)
-
+                            # component.add_edge(w[0], w[1])
+                            verts.add(w[0])
+                            verts.add(w[1])
+                        for i in verts:
+                            for j in verts:
+                                if j > i and i in self.Edges[j]:
+                                    component.add_edge(i, j)
+                        self.Components.append(component)
+                        self.ArtPoints.append(u)
                 elif v != parent[u] and low[u] > disc[v]:
                     '''Update low value of 'u' only if 'v' is still in stack
                     (i.e. it's a back edge, not cross edge).'''
 
                     low[u] = min(low[u], disc[v])
                     st.append((u, v))
-
-        return components, art_points
+        return
 
     # Działa tylko gdy wierzchołki zaczynają się od 0. Czyli przed podziałem na podgrafy.
     # Zwraca dwuspójne podgrafy i listę punktów artykulacji
     def find_biconnected(self, without=None):
-        components = list()
-        art_points = list()
+        self.Components = list()
+        self.ArtPoints = list()
+        part_no = 0
         disc = [-1] * self.VerticesCount
         low = [-1] * self.VerticesCount
         parent = [-1] * self.VerticesCount
@@ -172,148 +143,48 @@ class Graph(object):
             if without is not None and i in without:
                 continue
             if disc[i] == -1:
-                comp_inc, art_inc = self._biconnected_util(i, parent, low, disc, st, without)
-                components = components + comp_inc
-                art_points = art_points + art_inc
+                part_no += 1
+                self._biconnected_util(i, parent, low, disc, st, without)
 
             if st:
-                component = Graph(directed=self.Directed)
+                component = GraphPart()
 
+                verts = set()
                 while st:
                     w = st.pop()
-                    component.add_edge_unsafe(w[0], w[1])
-                components.append(component)
-        return components, art_points
+                    # component.add_edge(w[0], w[1])
+                    verts.add(w[0])
+                    verts.add(w[1])
+                for i in verts:
+                    for j in verts:
+                        if j > i and i in self.Edges[j]:
+                            component.add_edge(i, j)
+                self.Components.append(component)
+                self.ArtPoints.append(-1*part_no)
+        return
 
-    # Na razie niewydajna wersja, powinna raczej zwracać False od razu jak wyłapie że jest >1 komponent
-    def is_biconnected(self, without=None):
-        return len(self.find_biconnected(without)[0]) == 1
-
-    # Działa tylko dla grafów dwuspójnych
-    def find_uvw(self):
-        # 1: Wybrać wierzchołek x o stopniu 3 <= deg(x) <= n-1
-        u = -1
-        v = -1
-        w = -1
-        x = -1
-        for i in self.Edges:
-            if 3 <= len(self.Edges[i]) <= len(self.Edges) - 1:
-                x = i
-                break
-        # 2: Sprawdzić czy graf po usunięciu x pozostałby dwuspójny
-        components, articulation = self.find_biconnected([x])
-
-        # 2a: Jest dwusp., więc u=x, v jest w odległości 2 od u, w pomiędzy nimi
-        if len(components) == 1:
-            found = False
-            u = x
-            for i in self.Edges[x]:
-                if i in self.Edges and len(self.Edges[i]) > 1:
-                    for j in self.Edges[i]:
-                        if j != x:
-                            v = j
-                            w = i
-                            found = True
-                            break
-                    if found:
-                        break
-
-        # 2b. Nie jest dwusp., więc w=x, a u i v są sąsiadami x nie będącymi punktami artykulacji
-        else:
-            w = x
-            for i in self.Edges[w]:
-                if i not in articulation:
-                    if u == -1:
-                        u = i
-                    elif v == -1:
-                        v = i
-                        break
-        return u, v, w
-
-    # Zwraca słownik w postaci {etykieta : wierzchołek}
-    def label_from_uvw(self, u, v, w):
-        if min(u, v, w) < 0 or max(u, v, w) > self.VerticesCount or u == v or v == w or w == u:
-            raise ValueError("{0}, {1}, {2} nie są prawidłowymi indeksami dla u, v, w".format(u, v, w))
-
-        result = dict()
-        result[0] = u
-        result[1] = v
-
-        # Przyporządkowuję etykiety w kolejności malejącej, używając przeszukiwania wszerz od wierzchołka w
-        queue = deque()
-        visited = [False] * self.VerticesCount
-        queue.append(w)
-        visited[w] = True
-        cur_label = self.VerticesCount - 1
-        while len(queue) != 0:
-            parent = queue.popleft()
-            if parent != u and parent != v:        # False tylko dla u i v
-                result[cur_label] = parent
-                cur_label -= 1
-            if parent in self.Edges:
-                for vert in self.Edges[parent]:
-                    if not visited[vert]:
-                        queue.append(vert)
-                        visited[vert] = True
-        return result
-
-    def colouring_from_labels(self, labels):
-        colouring = [-1] * self.VerticesCount
-        delta = self.get_delta()
+    def test_colouring(self, colouring):
+        if len(colouring) != self.VerticesCount:
+            return False
+        if max(colouring) > self.get_delta() and min(colouring) >= 0:
+            return False
         for i in range(self.VerticesCount):
-            vert = labels[i]
-            coloursTaken = [False] * delta
-            for j in self.Edges[vert]:
-                if colouring[j] != -1:
-                    coloursTaken[colouring[j]] = True
-            for colour in range(delta):
-                if not coloursTaken[colour]:
-                    colouring[vert] = colour
-                    break
-        return colouring
-
-    def colour_as_cycle(self):
-        colouring = list()
-        for i in range(self.VerticesCount):
-            colouring.append(-1)
-        start = 0
-        colouring[start] = 0
-        cur_col = 1
-        current = start
-        prev = -1
-
-        while True:
-            for nxt in self.Edges[current]:
-                if nxt != prev:
-                    if nxt != start:
-                        prev = current
-                        colouring[nxt] = cur_col
-                        if cur_col == 1:
-                            cur_col = 0
-                        else:
-                            cur_col = 1
-                    elif colouring[current] == 0:
-                        colouring[current] = 2
-                    current = nxt
-                    break
-            if current == start:
-                break
-        return colouring
-
-    def colour_as_fully_connected(self):
-        colouring = [i for i in range(self.VerticesCount)]
-        return colouring
+            if i in self.Edges:
+                for j in self.Edges[i]:
+                    if colouring[i] == colouring[j]:
+                        return False
+        return True
 
     def find_brooks_colouring(self):
-        if self.is_cycle():
-            return self.colour_as_cycle()
-        if self.is_fully_connected():
-            return self.colour_as_fully_connected()
-        if not self.is_biconnected():
-            raise Exception("Na chwilę obecną obsługiwane są tylko grafy dwuspójne")
-        u, v, w = self.find_uvw()
-        return self.colouring_from_labels(self.label_from_uvw(u, v, w))
 
-    # TODO: Wyświetlanie kolorowania grafów w graphviz
-    # TODO: Łączenie kolorowań podgrafów dwuspójnych
+        self.find_biconnected()
+        part_colourings = list()
+        for c in self.Components:
+            part_colourings.append(c.find_brooks_colouring())
+        colouring = [-1] * self.VerticesCount
+        for i in range(len(self.Components)-1, -1, -1):
+            if self.ArtPoints[i] >= 0 and colouring[self.ArtPoints[i]] != -1 and part_colourings[i][self.ArtPoints[i]] != colouring[self.ArtPoints[i]]:
+                swap_colors(part_colourings[i], colouring[self.ArtPoints[i]], part_colourings[i][self.ArtPoints[i]])
+            colouring = apply_colouring(colouring, part_colourings[i])
+        return colouring
 

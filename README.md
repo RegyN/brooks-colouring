@@ -2,6 +2,9 @@
 
 ### Changelog:
 
+#### 1.0
+* Działa już dla wszystkich typów grafów
+
 #### 0.3
 * Nowa klasa PartGraph implementująca funkcjonalność klasy Graph, ale dla grafów o wierzchołkach o dowolnej numeracji (niekoniecznie kolejno od 0 do n-1)
 * Poprawki w sprawdzaniu cykli i ich kolorowaniu w klasie Graph.
@@ -14,8 +17,3 @@
 Pierwsza wersja
 * Na razie tylko klasa Graph, udostępniająca funkcje potrzebne do algorytmu
 * Trzeba jeszcze wymyślić jak łączyć kolorowania składowych dla grafów niedwuspójnych
-
-### Znane problemy:
-* Działa tylko dla grafów dwuspójnych
-* Brak weryfikacji danych wejściowych
-* Raczej kiepska optymalizacja
